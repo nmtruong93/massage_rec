@@ -28,7 +28,7 @@ class DataLoader:
         df.columns = [i.lower().replace(' ', '_') for i in df.columns]
 
         # Drop unnecessary columns
-        drop_cols = ['service_name', 'center_zip', 'invoice_closed_date']
+        drop_cols = ['service_name', 'center_zip']
         df.drop(columns=drop_cols, inplace=True)
 
         # Only calculate the recommendation for the massages and enhancements
@@ -52,7 +52,7 @@ class DataLoader:
 
         massage_cols = ['user_id', 'guest_dob', 'guest_zipcode', 'guest_gender', 'guest_base_center', 'invoice_id',
                         'service_length', 'service_category', 'item_code', 'center_name']
-        enhancement_cols = ['invoice_id', 'item_code']
+        enhancement_cols = ['invoice_id', 'item_code', 'invoice_closed_date']
         massage_df = data[data.service_parent_category == 'Massages'][massage_cols]
         enhancement_df = data[data.service_parent_category == 'Enhancement'][enhancement_cols]
 
@@ -89,7 +89,7 @@ class DataLoader:
 
         # Convert 9/20/1978 12:00:00 AM to datetime
         data['guest_dob'] = pd.to_datetime(data['guest_dob'], format='%m/%d/%Y %I:%M:%S %p')
-        data['invoice_id'] = data['invoice_id'].astype(str)
+        data['invoice_closed_date'] = pd.to_datetime(data['invoice_closed_date'])
 
         # Calculate the age of the guest
         data['guest_age'] = (pd.to_datetime('today') - data['guest_dob']).dt.days // days_in_year
@@ -101,6 +101,11 @@ class DataLoader:
         ]
         for col in cat_cols:
             data[col] = data[col].astype('category')
+
+        logger.info(f"Data rows {data.shape[0]} "
+                    f"| Unique users {data.user_id.nunique()} "
+                    f"| unique items {data.enhancement_item_code.nunique()} "
+                    f"| unique invoices {data.invoice_id.nunique()}")
 
         return data
 
