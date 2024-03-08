@@ -114,8 +114,8 @@ class DataLoader:
 
 
 if __name__ == '__main__':
-    data_loader = DataLoader(os.path.join(settings.BASE_DIR, 'data', '10000_samples.csv'))
+    data_loader = DataLoader(os.path.join(settings.BASE_DIR, 'data', 'full_2024-02-22_04-55-21.csv'))
     data = data_loader.load_data()
     merged_df = data_loader.merge_massages_enhancements(data)
     processed_df = data_loader.process_data_types(merged_df)
-    processed_df.to_parquet(os.path.join(settings.BASE_DIR, 'data', '1000_processed_data.parquet'), index=False)
+    processed_df.to_parquet(os.path.join(settings.BASE_DIR, 'data', 'full_processed_data.parquet'), index=False)

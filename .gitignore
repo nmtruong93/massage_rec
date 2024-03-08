@@ -1,3 +1,5 @@
 .venv
 data
 .idea
+.env.staging
+.env.prod

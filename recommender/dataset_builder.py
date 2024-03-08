@@ -18,6 +18,7 @@ class DatasetBuilder:
     Output:
         ENHANCEMENT_CODE
     """
+
     def __init__(self, data=None, data_path=None):
         if data is None:
             self.data = self.load_data(data_path)
@@ -50,7 +51,9 @@ class DatasetBuilder:
         interaction_df.columns = [col.upper() for col in interaction_df.columns]
 
         # Convert timestamp to unix timestamp
-        interaction_df['TIMESTAMP'] = interaction_df['TIMESTAMP'].astype(int) // 10**9
+        interaction_df['TIMESTAMP'] = interaction_df['TIMESTAMP'].astype(int) // 10 ** 9
+
+        assert interaction_df.isnull().values.any() == False, "There are missing values in the interaction dataset"
 
         return interaction_df
 
@@ -74,3 +77,6 @@ if __name__ == '__main__':
     data_builder = DatasetBuilder(data_path=path)
     interaction_df = data_builder.build_interaction_dataset()
     user_df = data_builder.build_user_dataset()
+
+    interaction_df.to_csv(os.path.join(settings.BASE_DIR, 'data/interaction.csv'), index=False)
+    user_df.to_csv(os.path.join(settings.BASE_DIR, 'data/user.csv'), index=False)
