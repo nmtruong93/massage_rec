@@ -46,7 +46,7 @@ class DatasetBuilder:
         logger.info("Building interaction dataset...")
 
         # Create the interaction dataset
-        interaction_df = self.data[['user_id', 'item_id', 'timestamp', 'service_length', 'massage_name']]
+        interaction_df = self.data[['user_id', 'item_id', 'timestamp', 'service_length', 'massage_name', 'center_name']]
         interaction_df['event_type'] = 'purchase'
         interaction_df = interaction_df.drop_duplicates(subset=['user_id', 'item_id', 'timestamp'])
         interaction_df.drop_duplicates(subset=['user_id', 'item_id', 'timestamp'], inplace=True)
@@ -66,7 +66,7 @@ class DatasetBuilder:
         logger.info("Building user dataset...")
 
         # Create the user dataset
-        user_df = self.data[['user_id', 'age', 'gender', 'zipcode', 'base_center', 'center_name']]
+        user_df = self.data[['user_id', 'age', 'gender', 'zipcode', 'base_center']]
         user_df = user_df.drop_duplicates(subset=['user_id'])
         user_df.columns = [col.upper() for col in user_df.columns]
         return user_df
