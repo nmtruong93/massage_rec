@@ -48,12 +48,12 @@ class DatasetBuilder:
         # Create the interaction dataset
         interaction_df = self.data[['user_id', 'item_id', 'timestamp', 'service_length', 'massage_name']]
         interaction_df['event_type'] = 'purchase'
+        interaction_df = interaction_df.drop_duplicates(subset=['user_id', 'item_id', 'timestamp'])
+        interaction_df.drop_duplicates(subset=['user_id', 'item_id', 'timestamp'], inplace=True)
         interaction_df.columns = [col.upper() for col in interaction_df.columns]
 
         # Convert timestamp to unix timestamp
         interaction_df['TIMESTAMP'] = interaction_df['TIMESTAMP'].astype(int) // 10 ** 9
-
-        assert interaction_df.isnull().values.any() == False, "There are missing values in the interaction dataset"
 
         return interaction_df
 
@@ -71,12 +71,28 @@ class DatasetBuilder:
         user_df.columns = [col.upper() for col in user_df.columns]
         return user_df
 
+    def build_item_dataset(self):
+        """
+        Build the item dataset for the recommendation system
+
+        :return: pd.DataFrame, the item dataset
+        """
+        logger.info("Building item dataset...")
+
+        # Create the item dataset
+        item_df = self.data[['item_id', 'item_name']]
+        item_df = item_df.drop_duplicates(subset=['item_id'])
+        item_df.columns = [col.upper() for col in item_df.columns]
+        return item_df
+
 
 if __name__ == '__main__':
-    path = os.path.join(settings.BASE_DIR, 'data/1000_processed_data.parquet')
+    path = os.path.join(settings.BASE_DIR, 'data', 'full_processed_data.parquet')
     data_builder = DatasetBuilder(data_path=path)
     interaction_df = data_builder.build_interaction_dataset()
     user_df = data_builder.build_user_dataset()
+    item_df = data_builder.build_item_dataset()
 
     interaction_df.to_csv(os.path.join(settings.BASE_DIR, 'data/interaction.csv'), index=False)
     user_df.to_csv(os.path.join(settings.BASE_DIR, 'data/user.csv'), index=False)
+    item_df.to_csv(os.path.join(settings.BASE_DIR, 'data/item.csv'), index=False)

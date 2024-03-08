@@ -52,7 +52,7 @@ class DataLoader:
 
         massage_cols = ['user_id', 'guest_dob', 'guest_zipcode', 'guest_gender', 'guest_base_center', 'invoice_id',
                         'service_length', 'item_name', 'center_name']
-        enhancement_cols = ['invoice_id', 'item_code', 'invoice_closed_date']
+        enhancement_cols = ['invoice_id', 'item_name', 'item_code', 'invoice_closed_date']
         massage_df = data[data.service_parent_category == 'Massages'][massage_cols]
         enhancement_df = data[data.service_parent_category == 'Enhancement'][enhancement_cols]
 

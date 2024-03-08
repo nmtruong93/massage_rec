@@ -8,7 +8,9 @@ class Config:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def __init__(self):
-        self.dataset_bucket = f'{self.PREFIX}-massage-dataset'
+        self.S3_DATASET_BUCKET = f'{self.PREFIX}-massage-dataset'
+        self.DATASET_GROUP_NAME = f'{self.PREFIX}-massage-dataset-group'
+        self.PERSONALIZE_ROLE_ARN = f'arn:aws:iam::123456789012:role/PersonalizeRole'
 
 
 class StagingConfig(Config):

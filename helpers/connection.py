@@ -1,4 +1,3 @@
-import ast
 import os
 
 import boto3
@@ -94,3 +93,29 @@ def connect_to_iam_resource(profile_name=None):
     iam_client = session.resource("iam")
 
     return iam_client
+
+
+def connect_to_personalize(profile_name=None):
+    """
+    Connect to personalize
+    :param profile_name: profile name in ~/.aws/credentials
+    :return: object, personalize connection
+    """
+
+    session = create_session(profile_name=profile_name)
+    personalize = session.client("personalize")
+
+    return personalize
+
+
+def connect_to_personalize_runtime(profile_name=None):
+    """
+    Connect to personalize runtime
+    :param profile_name: profile name in ~/.aws/credentials
+    :return: object, personalize runtime connection
+    """
+
+    session = create_session(profile_name=profile_name)
+    personalize_runtime = session.client("personalize-runtime")
+
+    return personalize_runtime
