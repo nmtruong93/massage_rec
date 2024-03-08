@@ -51,28 +51,32 @@ class DataLoader:
         logger.info("Merging massages and enhancements...")
 
         massage_cols = ['user_id', 'guest_dob', 'guest_zipcode', 'guest_gender', 'guest_base_center', 'invoice_id',
-                        'service_length', 'service_category', 'item_code', 'center_name']
+                        'service_length', 'item_name', 'center_name']
         enhancement_cols = ['invoice_id', 'item_code', 'invoice_closed_date']
         massage_df = data[data.service_parent_category == 'Massages'][massage_cols]
         enhancement_df = data[data.service_parent_category == 'Enhancement'][enhancement_cols]
 
         massage_df.rename(
             columns={
-                'service_category': 'massage_category',
-                'item_code': 'massage_item_code'
+                'guest_dob': 'user_dob',
+                'guest_zipcode': 'zipcode',
+                'guest_gender': 'gender',
+                'guest_base_center': 'base_center',
+                'item_name': 'massage_name'
             },
             inplace=True
         )
         enhancement_df.rename(
             columns={
-                'item_code': 'enhancement_item_code'
+                'item_code': 'item_id',
+                'invoice_closed_date': 'timestamp'
             },
             inplace=True
         )
 
         # Merge the massage and enhancement data
-        merged_df = massage_df.merge(enhancement_df, on='invoice_id', how='left')
-        merged_df = merged_df[~merged_df.enhancement_item_code.isnull()].reset_index(drop=True)
+        merged_df = massage_df.merge(enhancement_df, on='invoice_id', how='left').drop(columns='invoice_id')
+        merged_df = merged_df[~merged_df.item_id.isnull()].reset_index(drop=True)
 
         return merged_df
 
@@ -88,24 +92,23 @@ class DataLoader:
         logger.info("Processing data types...")
 
         # Convert 9/20/1978 12:00:00 AM to datetime
-        data['guest_dob'] = pd.to_datetime(data['guest_dob'], format='%m/%d/%Y %I:%M:%S %p')
-        data['invoice_closed_date'] = pd.to_datetime(data['invoice_closed_date'])
+        data['user_dob'] = pd.to_datetime(data['user_dob'], format='%m/%d/%Y %I:%M:%S %p')
+        data['timestamp'] = pd.to_datetime(data['timestamp'])
 
         # Calculate the age of the guest
-        data['guest_age'] = (pd.to_datetime('today') - data['guest_dob']).dt.days // days_in_year
-        data.drop(columns='guest_dob', inplace=True)
+        data['age'] = (pd.to_datetime('today') - data['user_dob']).dt.days // days_in_year
+        data.drop(columns='user_dob', inplace=True)
 
         cat_cols = [
-            'guest_zipcode', 'guest_gender', 'guest_base_center', 'service_length',
-            'massage_category', 'massage_item_code', 'center_name'
+            'zipcode', 'gender', 'base_center', 'service_length', 'massage_name', 'center_name'
         ]
         for col in cat_cols:
             data[col] = data[col].astype('category')
 
         logger.info(f"Data rows {data.shape[0]} "
                     f"| Unique users {data.user_id.nunique()} "
-                    f"| unique items {data.enhancement_item_code.nunique()} "
-                    f"| unique invoices {data.invoice_id.nunique()}")
+                    f"| unique items {data.item_id.nunique()} "
+                    f"| unique massages {data.massage_name.nunique()} ")
 
         return data
 
@@ -115,3 +118,4 @@ if __name__ == '__main__':
     data = data_loader.load_data()
     merged_df = data_loader.merge_massages_enhancements(data)
     processed_df = data_loader.process_data_types(merged_df)
+    processed_df.to_parquet(os.path.join(settings.BASE_DIR, 'data', '1000_processed_data.parquet'), index=False)
