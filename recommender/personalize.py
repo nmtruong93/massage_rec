@@ -108,7 +108,7 @@ class Personalize:
             policy_arn = [
                 "arn:aws:iam::aws:policy/AmazonS3FullAccess",
                 "arn:aws:iam::aws:policy/service-role/AmazonPersonalizeFullAccess"
-                ]
+            ]
 
         if isinstance(policy_arn, str):
             policy_arn = [policy_arn]
@@ -478,13 +478,19 @@ class Personalize:
 
             time.sleep(30)
 
-    def create_solution(self, name, dataset_group_arn, recipe_arn=None):
+    def create_solution(self, name, dataset_group_arn,
+                        keep_previous_solution=True,
+                        recipe_arn=None,
+                        perform_hpo=False, perform_auto_ml=False):
         """
         Create a solution
 
         :param name: str, the name of the solution
         :param dataset_group_arn: str, the dataset group ARN
+        :param keep_previous_solution: bool, whether to keep the previous solution. Default: True
         :param recipe_arn: str, the recipe ARN
+        :param perform_hpo: bool, whether to perform hyperparameter optimization
+        :param perform_auto_ml: bool, whether to perform autoML
         :return: str, the solution ARN
         """
         logger.info("List recipes...")
@@ -496,15 +502,50 @@ class Personalize:
             recipe_arn = "arn:aws:personalize:::recipe/aws-user-personalization"
 
         logger.info(f"Creating solution {name}...")
-        solution_response = self.personalize_client.create_solution(
-            name=name,
-            datasetGroupArn=dataset_group_arn,
-            recipeArn=recipe_arn,
-            performHPO=True
-        )
+
+        solution_arn = None
+        if keep_previous_solution:
+            # Check if the solution already exists, then take the solution ARN
+            solutions = self.personalize_client.list_solutions(datasetGroupArn=dataset_group_arn)
+            for solution in solutions['solutions']:
+                if solution['name'] == name:
+                    solution_arn = solution['solutionArn']
+        else:
+            # Delete the previous solution
+            solutions = self.personalize_client.list_solutions(datasetGroupArn=dataset_group_arn)
+            for solution in solutions['solutions']:
+                if solution['name'] == name:
+                    self.personalize_client.delete_solution(solutionArn=solution['solutionArn'])
+
+                    # Wait for the solution to be deleted
+                    max_time = time.time() + 3 * 60 * 60  # 3 hours
+                    while time.time() < max_time:
+                        describe_solution_response = self.personalize_client.describe_solution(
+                            solutionArn=solution['solutionArn']
+                        )
+                        status = describe_solution_response["solution"]["status"]
+                        logger.info(f"Solution: {status}")
+
+                        if status == "DELETE PENDING" or status == "DELETE FAILED":
+                            break
+
+                        time.sleep(30)
+                    logger.info(f"Deleted solution {solution['solutionArn']}")
+
+        if not solution_arn:
+            # Not found the solution, then create a new solution
+            solution_response = self.personalize_client.create_solution(
+                name=name,
+                datasetGroupArn=dataset_group_arn,
+                recipeArn=recipe_arn,
+                performHPO=perform_hpo,
+                performAutoML=perform_auto_ml
+            )
+            solution_arn = solution_response['solutionArn']
+            logger.info(f"Created solution {solution_arn}")
 
         solution_version_response = self.personalize_client.create_solution_version(
-            solutionArn=solution_response['solutionArn']
+            solutionArn=solution_arn
         )
 
         # Wait for the solution version to be created
@@ -521,7 +562,7 @@ class Personalize:
 
             time.sleep(30)
 
-        return solution_response['solutionArn'], solution_version_response['solutionVersionArn']
+        return solution_version_response['solutionVersionArn']
 
     def get_solution_metrics(self, solution_version_arn):
         """
@@ -548,7 +589,10 @@ class Personalize:
         response = self.personalize_client.create_campaign(
             name=name,
             solutionVersionArn=solution_version_arn,
-            minProvisionedTPS=min_provisioned_tps
+            minProvisionedTPS=min_provisioned_tps,
+            campaign_config={
+                "enableMetadataWithRecommendations": True
+            }
         )
 
         # Wait for the campaign to be created
@@ -566,7 +610,7 @@ class Personalize:
             time.sleep(30)
         return response['campaignArn']
 
-    def get_recommendations(self, campaign_arn, user_id, context, num_results=5):
+    def get_recommendations(self, campaign_arn, user_id, context, num_results=5, return_item_metadata=True):
         """
         Get recommendations
 
@@ -574,14 +618,21 @@ class Personalize:
         :param user_id: str, the user ID
         :param context: dict, the context
         :param num_results: int, the number of results
+        :param return_item_metadata: bool, whether to return item metadata. Default: True
         :return: list, the recommendations
         """
-        response = self.personalize_runtime_client.get_recommendations(
-            campaignArn=campaign_arn,
-            userId=user_id,
-            numResults=num_results,
-            context=context
-        )
+        params = {
+            "campaignArn": campaign_arn,
+            "userId": user_id,
+            "numResults": num_results,
+            "context": context
+        }
+        if return_item_metadata:
+            params['metadata'] = {
+                "ITEMS": ["ITEM_NAME"]
+            }
+
+        response = self.personalize_runtime_client.get_recommendations(**params)
         return response['itemList']
 
 
@@ -616,7 +667,7 @@ if __name__ == '__main__':
     personalize.import_items_data(item_dataset_arn, s3_data_path)
 
     # Create a solution
-    solution_arn, solution_version_arn = personalize.create_solution(
+    solution_version_arn = personalize.create_solution(
         name=f'{deploy_env}-massage-solution',
         dataset_group_arn=dataset_group_arn
     )
@@ -644,5 +695,3 @@ if __name__ == '__main__':
     }
     recommendations = personalize.get_recommendations(campaign_arn, user_id, context)
     logger.info(recommendations)
-
-
