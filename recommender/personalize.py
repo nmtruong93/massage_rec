@@ -1,16 +1,56 @@
+import os
 import time
 import json
 from botocore.exceptions import ClientError
 from config.config import settings
 from config.log_config import logger
-from helpers.connection import connect_to_personalize, connect_to_iam_resource, connect_to_personalize_runtime
+from helpers.connection import (connect_to_personalize, connect_to_iam_resource, connect_to_personalize_runtime,
+                                connect_to_s3_client)
 
 
 class Personalize:
     def __init__(self, profile_name=None):
+        self.s3_client = connect_to_s3_client(profile_name=profile_name)
         self.personalize_client = connect_to_personalize(profile_name=profile_name)
         self.iam_resource = connect_to_iam_resource(profile_name=profile_name)
         self.personalize_runtime_client = connect_to_personalize_runtime(profile_name=profile_name)
+
+        self.allow_personalize_access_to_s3(settings.S3_DATASET_BUCKET)
+        role = self.create_iam_role(settings.PERSONALIZE_ROLE_NAME)
+        self.role_arn = role.arn
+
+    def allow_personalize_access_to_s3(self, bucket_name):
+        """
+        Allow personalize access to s3 bucket
+
+        :param bucket_name: str, the s3 bucket name
+        :return:
+        """
+        policy = {
+            "Version": "2012-10-17",
+            "Id": "PersonalizeS3BucketAccessPolicy",
+            "Statement": [
+                {
+                    "Sid": "PersonalizeS3BucketAccessPolicy",
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "personalize.amazonaws.com"
+                    },
+                    "Action": [
+                        "s3:GetObject",
+                        "s3:ListBucket",
+                        "s3:PutObject",
+                    ],
+                    "Resource": [
+                        "arn:aws:s3:::{}".format(bucket_name),
+                        "arn:aws:s3:::{}/*".format(bucket_name)
+                    ]
+                }
+            ]
+        }
+
+        self.s3_client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(policy))
+        logger.info(f"Allowed personalize access to s3 bucket {bucket_name}")
 
     def get_iam_role(self, iam_role_name):
         """
@@ -66,7 +106,7 @@ class Personalize:
         }
         if not policy_arn:
             policy_arn = [
-                "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
+                "arn:aws:iam::aws:policy/AmazonS3FullAccess",
                 "arn:aws:iam::aws:policy/service-role/AmazonPersonalizeFullAccess"
                 ]
 
@@ -107,6 +147,12 @@ class Personalize:
         """
         logger.info(f"Creating dataset group {name}...")
 
+        # Check if the dataset group already exists
+        dataset_groups = self.personalize_client.list_dataset_groups()
+        for dataset_group in dataset_groups['datasetGroups']:
+            if dataset_group['name'] == name:
+                return dataset_group['datasetGroupArn']
+
         response = self.personalize_client.create_dataset_group(name=name)
         dataset_group_arn = response['datasetGroupArn']
 
@@ -136,7 +182,14 @@ class Personalize:
         :return: str, the dataset ARN
         """
         logger.info(f"Creating interaction schema {schema_name}...")
-        # USER_ID,ITEM_ID,TIMESTAMP,SERVICE_LENGTH,MASSAGE_NAME,EVENT_TYPE
+
+        # Check if the dataset already exists
+        datasets = self.personalize_client.list_datasets(datasetGroupArn=dataset_group_arn)
+        for dataset in datasets['datasets']:
+            if dataset['name'] == name:
+                return dataset['datasetArn']
+
+        # USER_ID,ITEM_ID,TIMESTAMP,SERVICE_LENGTH,MASSAGE_NAME,CENTER_NAME,EVENT_TYPE
         schema = {
             "type": "record",
             "name": "Interactions",
@@ -190,6 +243,7 @@ class Personalize:
             name=name,
         )
 
+        self.wait_create_dataset(dataset_response)
         return dataset_response['datasetArn']
 
     def create_user_dataset(self, schema_name, dataset_group_arn, name):
@@ -202,6 +256,12 @@ class Personalize:
         :return: str, the dataset ARN
         """
         logger.info(f"Creating user schema {schema_name}...")
+        # Check if the dataset already exists
+        datasets = self.personalize_client.list_datasets(datasetGroupArn=dataset_group_arn)
+        for dataset in datasets['datasets']:
+            if dataset['name'] == name:
+                return dataset['datasetArn']
+
         # USER_ID, AGE, GENDER, ZIPCODE, BASE_CENTER, CENTER_NAME
         schema = {
             "type": "record",
@@ -247,7 +307,7 @@ class Personalize:
             schemaArn=schema_arn,
             name=name,
         )
-
+        self.wait_create_dataset(dataset_response)
         return dataset_response['datasetArn']
 
     def create_item_dataset(self, schema_name, dataset_group_arn, name):
@@ -260,6 +320,12 @@ class Personalize:
         :return: str, the dataset ARN
         """
         logger.info(f"Creating item schema {schema_name}...")
+        # Check if the dataset already exists
+        datasets = self.personalize_client.list_datasets(datasetGroupArn=dataset_group_arn)
+        for dataset in datasets['datasets']:
+            if dataset['name'] == name:
+                return dataset['datasetArn']
+
         # ITEM_ID, ITEM_NAME
         schema = {
             "type": "record",
@@ -292,14 +358,37 @@ class Personalize:
             name=name,
         )
 
+        self.wait_create_dataset(dataset_response)
         return dataset_response['datasetArn']
 
-    def import_interactions_data(self, dataset_arn, s3_data_path):
+    def wait_create_dataset(self, dataset_response):
+        """
+        Wait for the dataset to be created
+
+        :param dataset_response: dict, the dataset response
+        :return:
+        """
+        # Wait for the dataset to be created
+        max_time = time.time() + 3 * 60 * 60
+        while time.time() < max_time:
+            describe_dataset_response = self.personalize_client.describe_dataset(
+                datasetArn=dataset_response['datasetArn']
+            )
+            status = describe_dataset_response["dataset"]["status"]
+            logger.info(f"Dataset: {status}")
+
+            if status == "ACTIVE" or status == "CREATE FAILED":
+                break
+
+            time.sleep(30)
+
+    def import_interactions_data(self, dataset_arn, s3_data_path, import_mode='FULL'):
         """
         Import interactions data to the dataset
 
         :param dataset_arn: str, the dataset ARN
         :param s3_data_path: str, the path to the data
+        :param import_mode: str, the import mode, 'FULL'|'INCREMENTAL'. Default: 'FULL'
         :return: str, the job ARN
         """
         logger.info(f"Importing interactions data to {dataset_arn}...")
@@ -310,19 +399,21 @@ class Personalize:
             dataSource={
                 "dataLocation": s3_data_path
             },
-            roleArn=settings.PERSONALIZE_ROLE_ARN
+            roleArn=self.role_arn,
+            importMode=import_mode
         )
 
         self.wait_import_dataset(response)
 
         return response['datasetImportJobArn']
 
-    def import_users_data(self, dataset_arn, s3_data_path):
+    def import_users_data(self, dataset_arn, s3_data_path, import_mode='FULL'):
         """
         Import users data to the dataset
 
         :param dataset_arn: str, the dataset ARN
         :param s3_data_path: str, the path to the data
+        :param import_mode: str, the import mode, 'FULL'|'INCREMENTAL'. Default: 'FULL'
         :return: str, the job ARN
         """
         logger.info(f"Importing users data to {dataset_arn}...")
@@ -333,19 +424,21 @@ class Personalize:
             dataSource={
                 "dataLocation": s3_data_path
             },
-            roleArn=settings.PERSONALIZE_ROLE_ARN
+            roleArn=self.role_arn,
+            importMode=import_mode
         )
 
         self.wait_import_dataset(response)
 
         return response['datasetImportJobArn']
 
-    def import_items_data(self, dataset_arn, s3_data_path):
+    def import_items_data(self, dataset_arn, s3_data_path, import_mode='FULL'):
         """
         Import items data to the dataset
 
         :param dataset_arn: str, the dataset ARN
         :param s3_data_path: str, the path to the data
+        :param import_mode: str, the import mode, 'FULL'|'INCREMENTAL'. Default: 'FULL'
         :return: str, the job ARN
         """
         logger.info(f"Importing items data to {dataset_arn}...")
@@ -356,7 +449,8 @@ class Personalize:
             dataSource={
                 "dataLocation": s3_data_path
             },
-            roleArn=settings.PERSONALIZE_ROLE_ARN
+            roleArn=self.role_arn,
+            importMode=import_mode
         )
 
         self.wait_import_dataset(response)
@@ -492,37 +586,38 @@ class Personalize:
 
 
 if __name__ == '__main__':
+    deploy_env = os.getenv('DEPLOY_ENV', 'staging').lower()
     personalize = Personalize(profile_name='nmtruong')
-    dataset_group_arn = personalize.create_dataset_group(name='massage-dataset-group')
+    dataset_group_arn = personalize.create_dataset_group(name=f'{deploy_env}-massage-dataset-group')
     interaction_dataset_arn = personalize.create_interaction_dataset(
-        schema_name='massage-interactions-schema',
+        schema_name=f'{deploy_env}-massage-interactions-schema',
         dataset_group_arn=dataset_group_arn,
-        name='massage-interactions'
+        name=f'{deploy_env}-massage-interactions'
     )
     user_dataset_arn = personalize.create_user_dataset(
-        schema_name='massage-users-schema',
+        schema_name=f'{deploy_env}-massage-users-schema',
         dataset_group_arn=dataset_group_arn,
-        name='massage-users'
+        name=f'{deploy_env}-massage-users'
     )
     item_dataset_arn = personalize.create_item_dataset(
-        schema_name='massage-items-schema',
+        schema_name=f'{deploy_env}-massage-items-schema',
         dataset_group_arn=dataset_group_arn,
-        name='massage-items'
+        name=f'{deploy_env}-massage-items'
     )
 
     # Import the data
-    s3_data_path = f"s3://{settings.S3_DATASET_BUCKET}/interactions.csv"
+    s3_data_path = f"s3://{settings.S3_DATASET_BUCKET}/interaction.csv"
     personalize.import_interactions_data(interaction_dataset_arn, s3_data_path)
 
-    s3_data_path = f"s3://{settings.S3_DATASET_BUCKET}/users.csv"
+    s3_data_path = f"s3://{settings.S3_DATASET_BUCKET}/user.csv"
     personalize.import_users_data(user_dataset_arn, s3_data_path)
 
-    s3_data_path = f"s3://{settings.S3_DATASET_BUCKET}/items.csv"
+    s3_data_path = f"s3://{settings.S3_DATASET_BUCKET}/item.csv"
     personalize.import_items_data(item_dataset_arn, s3_data_path)
 
     # Create a solution
     solution_arn, solution_version_arn = personalize.create_solution(
-        name='massage-solution',
+        name=f'{deploy_env}-massage-solution',
         dataset_group_arn=dataset_group_arn
     )
 
@@ -532,14 +627,20 @@ if __name__ == '__main__':
 
     # Create a campaign
     campaign_arn = personalize.create_campaign(
-        name='massage-campaign',
+        name=f'{deploy_env}-massage-campaign',
         solution_version_arn=solution_version_arn
     )
 
     # Get recommendations
-    user_id = '1'
+    user_id = 'da5cc281-7dae-4ef6-9d46-580102ec0784'
     context = {
-        'age': 30,
+        'SERVICE_LENGTH': 60,
+        'MASSAGE_NAME': 'The NOW 50',
+        'CENTER_NAME': 'Roswell',
+        'AGE': 30,
+        'GENDER': 'Female',
+        'ZIPCODE': None,
+        'BASE_CENTER': 'Roswell'
     }
     recommendations = personalize.get_recommendations(campaign_arn, user_id, context)
     logger.info(recommendations)

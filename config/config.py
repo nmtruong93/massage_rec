@@ -10,7 +10,7 @@ class Config:
     def __init__(self):
         self.S3_DATASET_BUCKET = f'{self.PREFIX}-massage-dataset'
         self.DATASET_GROUP_NAME = f'{self.PREFIX}-massage-dataset-group'
-        self.PERSONALIZE_ROLE_ARN = f'arn:aws:iam::123456789012:role/PersonalizeRole'
+        self.PERSONALIZE_ROLE_NAME = f'{self.PREFIX.capitalize()}PersonalizeRole'
 
 
 class StagingConfig(Config):
