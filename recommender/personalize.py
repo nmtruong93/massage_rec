@@ -590,7 +590,7 @@ class Personalize:
             name=name,
             solutionVersionArn=solution_version_arn,
             minProvisionedTPS=min_provisioned_tps,
-            campaign_config={
+            campaignConfig={
                 "enableMetadataWithRecommendations": True
             }
         )
@@ -628,7 +628,7 @@ class Personalize:
             "context": context
         }
         if return_item_metadata:
-            params['metadata'] = {
+            params['metadataColumns'] = {
                 "ITEMS": ["ITEM_NAME"]
             }
 
@@ -677,20 +677,22 @@ if __name__ == '__main__':
     logger.info(solution_metrics)
 
     # Create a campaign
+    # solution_version_arn = 'arn:aws:personalize:us-west-2:639486279781:solution/staging-massage-solution/1c3637d3'
     campaign_arn = personalize.create_campaign(
         name=f'{deploy_env}-massage-campaign',
         solution_version_arn=solution_version_arn
     )
 
     # Get recommendations
+    # campaign_arn = 'arn:aws:personalize:us-west-2:639486279781:campaign/staging-massage-campaign'
     user_id = 'da5cc281-7dae-4ef6-9d46-580102ec0784'
     context = {
-        'SERVICE_LENGTH': 60,
+        'SERVICE_LENGTH': "60.0",
         'MASSAGE_NAME': 'The NOW 50',
         'CENTER_NAME': 'Roswell',
-        'AGE': 30,
+        'AGE': "30",
         'GENDER': 'Female',
-        'ZIPCODE': None,
+        'ZIPCODE': "null",
         'BASE_CENTER': 'Roswell'
     }
     recommendations = personalize.get_recommendations(campaign_arn, user_id, context)

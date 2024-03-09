@@ -15,15 +15,15 @@
     ```
 5. Get recommendations from AWS Personalize
     ```bash
-    # Get recommendations
+    # Get recommendations in recommender/personalize.py
     user_id = 'da5cc281-7dae-4ef6-9d46-580102ec0784'
     context = {
-        'SERVICE_LENGTH': 60,
+        'SERVICE_LENGTH': "60.0",
         'MASSAGE_NAME': 'The NOW 50',
         'CENTER_NAME': 'Roswell',
-        'AGE': 30,
+        'AGE': "30",
         'GENDER': 'Female',
-        'ZIPCODE': None,
+        'ZIPCODE': "null",
         'BASE_CENTER': 'Roswell'
     }
     recommendations = personalize.get_recommendations(campaign_arn, user_id, context)
