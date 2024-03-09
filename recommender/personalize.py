@@ -165,6 +165,11 @@ class Personalize:
                     "categorical": True
                 },
                 {
+                    "name": "CENTER_NAME",
+                    "type": ["string", "null"],
+                    "categorical": True
+                },
+                {
                     "name": "EVENT_TYPE",
                     "type": "string"
                 }
@@ -223,11 +228,6 @@ class Personalize:
                 },
                 {
                     "name": "BASE_CENTER",
-                    "type": ["string", "null"],
-                    "categorical": True
-                },
-                {
-                    "name": "CENTER_NAME",
                     "type": ["string", "null"],
                     "categorical": True
                 }
