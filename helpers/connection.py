@@ -20,11 +20,8 @@ def connect_to_s3_client(profile_name=None):
     :param profile_name: profile name in ~/.aws/credentials
     :return: object, S3 connection
     """
-    create_session(profile_name=profile_name)
-    s3_client = boto3.client(
-        "s3",
-        region_name=os.getenv("AWS_REGION"),
-    )
+    session = create_session(profile_name=profile_name)
+    s3_client = session.client("s3")
     return s3_client
 
 
@@ -35,8 +32,8 @@ def connect_to_s3_resource(profile_name=None):
     :param profile_name: profile name in ~/.aws/credentials
     :return: object, S3 resource
     """
-    create_session(profile_name=profile_name)
-    s3_resource = boto3.resource(
+    session = create_session(profile_name=profile_name)
+    s3_resource = session.resource(
         "s3",
         region_name=os.getenv("AWS_REGION"),
     )
@@ -44,14 +41,15 @@ def connect_to_s3_resource(profile_name=None):
     return s3_resource
 
 
-def connect_to_s3_bucket(s3_bucket_name):
+def connect_to_s3_bucket(s3_bucket_name, profile_name=None):
     """
     Connect to s3 bucket
 
+    :param profile_name: profile name in ~/.aws/credentials
     :param s3_bucket_name:
     :return: object, S3 bucket
     """
-    s3_resource = connect_to_s3_resource()
+    s3_resource = connect_to_s3_resource(profile_name=profile_name)
 
     return s3_resource.Bucket(s3_bucket_name)
 
