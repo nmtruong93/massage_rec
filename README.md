@@ -13,3 +13,19 @@
     ```bash
      python3 recommender/personalize.py
     ```
+5. Get recommendations from AWS Personalize
+    ```bash
+    # Get recommendations
+    user_id = 'da5cc281-7dae-4ef6-9d46-580102ec0784'
+    context = {
+        'SERVICE_LENGTH': 60,
+        'MASSAGE_NAME': 'The NOW 50',
+        'CENTER_NAME': 'Roswell',
+        'AGE': 30,
+        'GENDER': 'Female',
+        'ZIPCODE': None,
+        'BASE_CENTER': 'Roswell'
+    }
+    recommendations = personalize.get_recommendations(campaign_arn, user_id, context)
+    logger.info(recommendations)
+    ```

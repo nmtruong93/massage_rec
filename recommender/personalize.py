@@ -168,7 +168,7 @@ class Personalize:
             if status == "ACTIVE" or status == "CREATE FAILED":
                 break
 
-            time.sleep(10)
+            time.sleep(60)
 
         return response['datasetGroupArn']
 
@@ -380,7 +380,7 @@ class Personalize:
             if status == "ACTIVE" or status == "CREATE FAILED":
                 break
 
-            time.sleep(30)
+            time.sleep(60)
 
     def import_interactions_data(self, dataset_arn, s3_data_path, import_mode='FULL'):
         """
@@ -476,7 +476,7 @@ class Personalize:
             if status == "ACTIVE" or status == "CREATE FAILED":
                 break
 
-            time.sleep(30)
+            time.sleep(60)
 
     def create_solution(self, name, dataset_group_arn,
                         keep_previous_solution=True,
@@ -529,7 +529,7 @@ class Personalize:
                         if status == "DELETE PENDING" or status == "DELETE FAILED":
                             break
 
-                        time.sleep(30)
+                        time.sleep(60)
                     logger.info(f"Deleted solution {solution['solutionArn']}")
 
         if not solution_arn:
@@ -560,7 +560,7 @@ class Personalize:
             if status == "ACTIVE" or status == "CREATE FAILED":
                 break
 
-            time.sleep(30)
+            time.sleep(60)
 
         return solution_version_response['solutionVersionArn']
 
@@ -607,7 +607,7 @@ class Personalize:
             if status == "ACTIVE" or status == "CREATE FAILED":
                 break
 
-            time.sleep(30)
+            time.sleep(60)
         return response['campaignArn']
 
     def get_recommendations(self, campaign_arn, user_id, context, num_results=5, return_item_metadata=True):
