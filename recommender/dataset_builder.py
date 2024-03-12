@@ -48,13 +48,13 @@ class DatasetBuilder:
         # Create the interaction dataset
         interaction_df = self.data[['user_id', 'item_id', 'timestamp', 'service_length', 'massage_name', 'center_name']]
         interaction_df['event_type'] = 'purchase'
-        interaction_df = interaction_df.drop_duplicates(subset=['user_id', 'item_id', 'timestamp'])
-        interaction_df.drop_duplicates(subset=['user_id', 'item_id', 'timestamp'], inplace=True)
+        # interaction_df = interaction_df.drop_duplicates(subset=['user_id', 'item_id', 'timestamp'])
         interaction_df.columns = [col.upper() for col in interaction_df.columns]
 
         # Convert timestamp to unix timestamp
         interaction_df['TIMESTAMP'] = interaction_df['TIMESTAMP'].astype(int) // 10 ** 9
 
+        logger.info(f"Shape of interaction dataset: {interaction_df.shape}")
         return interaction_df
 
     def build_user_dataset(self):

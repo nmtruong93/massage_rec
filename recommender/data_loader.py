@@ -34,6 +34,10 @@ class DataLoader:
         # Only calculate the recommendation for the massages and enhancements
         df = df[df.service_parent_category.isin(['Massages', 'Enhancement'])]
 
+        # Filter message_df where massages invoice_id has exactly 3 rows
+        invoice_id_counts = df[df.service_parent_category == 'Massages'].invoice_id.value_counts()
+        df = df[df.invoice_id.isin(invoice_id_counts[invoice_id_counts == 3].index)]
+
         # 1 invoice_id has only 1 massages, but can have multiple enhancements
         # --> remove duplicates for massages with the same invoice_id
 
@@ -119,3 +123,21 @@ if __name__ == '__main__':
     merged_df = data_loader.merge_massages_enhancements(data)
     processed_df = data_loader.process_data_types(merged_df)
     processed_df.to_parquet(os.path.join(settings.BASE_DIR, 'data', 'full_processed_data.parquet'), index=False)
+
+    # Do you decision tre algorithm? XGBoost, LightGBM, CatBoost
+
+    # import pandas as pd
+    #
+    # old_user = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/users_list.csv')
+    # new_user = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/user.csv')
+    #
+    # old_item = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/item_list.csv')
+    # new_item = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/item.csv')
+    #
+    # old_interaction = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/interaction_list.csv')
+    # new_interaction = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/interaction.csv')
+    #
+    # print(old_user.shape, new_user.shape)
+    # print(old_item.shape, new_item.shape)
+    # print(old_interaction.shape, new_interaction.shape)
+    # print(old_user.head())
