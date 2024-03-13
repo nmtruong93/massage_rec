@@ -5,7 +5,7 @@ from recommender.personalization import Personalization
 
 from config.config import settings
 from config.log_config import logger
-from helpers.aws_data_ops import upload_file_to_s3
+from helpers.aws_data_ops import upload_file_to_s3, create_bucket
 from helpers.connection import connect_to_s3_client
 
 
@@ -48,7 +48,8 @@ class TrainPipeline:
         user_df.to_csv(os.path.join(settings.BASE_DIR, 'data/user.csv'), index=False)
         item_df.to_csv(os.path.join(settings.BASE_DIR, 'data/item.csv'), index=False)
 
-        # TODO: Check if S3 bucket exists
+        # Create bucket if not exist
+        create_bucket(self.s3_client, settings.S3_DATASET_BUCKET)
 
         upload_file_to_s3(
             self.s3_client,

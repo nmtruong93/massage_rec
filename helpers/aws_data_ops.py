@@ -94,6 +94,13 @@ def create_bucket(bucket_name, profile_name=None):
     region = session.region_name
     s3_client = session.client("s3", region_name=region)
 
+    # Check if bucket exist
+    response = s3_client.list_buckets()
+    for bucket in response["Buckets"]:
+        if bucket["Name"] == bucket_name:
+            logger.info(f"Bucket {bucket_name} already exists in {region} region")
+            return bucket_name
+
     s3_client.create_bucket(
         Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
     )

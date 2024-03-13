@@ -7,17 +7,15 @@
    ```
 2. Change `.env.example` to `.env.staging` or `.env.prod` and fill in environment variables
 
-3. Create S3 bucket `staging-massage-dataset` in staging env or `prod-massage-dataset` in production env
-
-4. Run full pipeline for training and deploying model
+3. Run full pipeline for training and deploying model
     ```bash
     python recommender/pipeline_train.py
     ```
-5. Pipeline for get recommendations
+4. Pipeline for get recommendations
     ```bash
     python recommender/pipeline_inference.py
     ```
-6. Get recommendations from AWS Personalize
+5. Get recommendations from AWS Personalize
     ```bash
     # Get recommendations in recommender/personalize.py
     user_id = 'da5cc281-7dae-4ef6-9d46-580102ec0784'
