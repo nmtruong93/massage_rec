@@ -71,11 +71,19 @@ class TrainPipeline:
         )
         logger.info("Data uploaded to s3")
 
-    def train_recommendation(self, import_mode='INCREMENTAL'):
+    def train_recommendation(self,
+                             import_mode='INCREMENTAL',
+                             perform_hpo=False,
+                             perform_auto_ml=False,
+                             keep_previous_solution=True
+                             ):
         """
         Train the recommendation model
 
         :param import_mode: str, str, the import data mode, 'FULL'|'INCREMENTAL'. Default: 'FULL'
+        :param perform_hpo: bool, whether to perform hyperparameter optimization. Default: False
+        :param perform_auto_ml: bool, whether to perform auto ml. Default: False
+        :param keep_previous_solution: bool, whether to keep the previous solution. Default: True
         :return: str, the ARN of the campaign, this is endpoint for the recommendation model
         """
 
@@ -112,7 +120,10 @@ class TrainPipeline:
         # Create a solution, aka train the model
         solution_version_arn = personalize.create_solution(
             name=f'{self.deploy_env}-massage-solution',
-            dataset_group_arn=dataset_group_arn
+            dataset_group_arn=dataset_group_arn,
+            perform_hpo=perform_hpo,
+            perform_auto_ml=perform_auto_ml,
+            keep_previous_solution=keep_previous_solution
         )
 
         # Get solution metrics, aka ranking metrics
@@ -127,10 +138,21 @@ class TrainPipeline:
         logger.info(campaign_arn)
         return campaign_arn
 
-    def run(self, import_mode='INCREMENTAL'):
+    def run(self,
+            import_mode='INCREMENTAL',
+            perform_hpo=False,
+            perform_auto_ml=False,
+            keep_previous_solution=True
+            ):
+
         processed_data = self.process_data()
         self.build_data_for_personalize(processed_data)
-        campaign_arn = self.train_recommendation(import_mode=import_mode)
+        campaign_arn = self.train_recommendation(
+            import_mode=import_mode,
+            perform_hpo=perform_hpo,
+            perform_auto_ml=perform_auto_ml,
+            keep_previous_solution=keep_previous_solution
+        )
         return campaign_arn
 
 
