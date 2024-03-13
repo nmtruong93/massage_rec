@@ -587,6 +587,24 @@ class Personalization:
         :return: str, the campaign ARN
         """
         logger.info(f"Creating campaign {name}...")
+
+        # Check if the campaign already exists --> update the campaign
+        campaigns = self.personalize_client.list_campaigns()
+        for campaign in campaigns['campaigns']:
+            if campaign['name'] == name:
+                campaign_arn = campaign['campaignArn']
+                self.personalize_client.update_campaign(
+                    campaignArn=campaign_arn,
+                    solutionVersionArn=solution_version_arn,
+                    minProvisionedTPS=min_provisioned_tps,
+                    campaignConfig={
+                        "enableMetadataWithRecommendations": True
+                    }
+                )
+                logger.info(f"Updated campaign {campaign_arn}")
+                return campaign_arn
+
+        # Create a new campaign if not found
         response = self.personalize_client.create_campaign(
             name=name,
             solutionVersionArn=solution_version_arn,
