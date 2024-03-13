@@ -8,7 +8,7 @@ from helpers.connection import (connect_to_personalize, connect_to_iam_resource,
                                 connect_to_s3_client)
 
 
-class Personalize:
+class Personalization:
     def __init__(self, profile_name=None):
         self.s3_client = connect_to_s3_client(profile_name=profile_name)
         self.personalize_client = connect_to_personalize(profile_name=profile_name)
@@ -638,7 +638,7 @@ class Personalize:
 
 if __name__ == '__main__':
     deploy_env = os.getenv('DEPLOY_ENV', 'staging').lower()
-    personalize = Personalize(profile_name='nmtruong')
+    personalize = Personalization(profile_name='nmtruong')
     dataset_group_arn = personalize.create_dataset_group(name=f'{deploy_env}-massage-dataset-group')
     interaction_dataset_arn = personalize.create_interaction_dataset(
         schema_name=f'{deploy_env}-massage-interactions-schema',

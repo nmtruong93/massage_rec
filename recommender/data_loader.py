@@ -123,21 +123,3 @@ if __name__ == '__main__':
     merged_df = data_loader.merge_massages_enhancements(data)
     processed_df = data_loader.process_data_types(merged_df)
     processed_df.to_parquet(os.path.join(settings.BASE_DIR, 'data', 'full_processed_data.parquet'), index=False)
-
-    # Do you decision tre algorithm? XGBoost, LightGBM, CatBoost
-
-    # import pandas as pd
-    #
-    # old_user = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/users_list.csv')
-    # new_user = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/user.csv')
-    #
-    # old_item = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/item_list.csv')
-    # new_item = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/item.csv')
-    #
-    # old_interaction = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/interaction_list.csv')
-    # new_interaction = pd.read_csv('/Users/nguyentruong/PycharmProjects/massage_rec/data/interaction.csv')
-    #
-    # print(old_user.shape, new_user.shape)
-    # print(old_item.shape, new_item.shape)
-    # print(old_interaction.shape, new_interaction.shape)
-    # print(old_user.head())
