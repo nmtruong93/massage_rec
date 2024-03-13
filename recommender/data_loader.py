@@ -1,5 +1,3 @@
-import os
-
 from config.config import settings
 from config.log_config import logger
 import pandas as pd
@@ -7,6 +5,8 @@ import pandas as pd
 
 class DataLoader:
     """
+    Process the raw data to clean and prepare for building the dataset.
+
     The recommender will recommend the enhancement based on the massage that the customer has chosen.
     The customers go to the massages and can choose to add >= 1 enhancements to their massages.
 
@@ -115,11 +115,3 @@ class DataLoader:
                     f"| unique massages {data.massage_name.nunique()} ")
 
         return data
-
-
-if __name__ == '__main__':
-    data_loader = DataLoader(os.path.join(settings.BASE_DIR, 'data', 'full_2024-02-22_04-55-21.csv'))
-    data = data_loader.load_data()
-    merged_df = data_loader.merge_massages_enhancements(data)
-    processed_df = data_loader.process_data_types(merged_df)
-    processed_df.to_parquet(os.path.join(settings.BASE_DIR, 'data', 'full_processed_data.parquet'), index=False)

@@ -1,19 +1,23 @@
 ### Step by step
-1. Load and preliminary data processing
+1. Create a virtual environment
    ```bash
-    python3 recommender/data_loader.py
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
    ```
-2. Build user, item and interaction datasets for aws personalize
-   ```bash
-    python3 recommender/dataset_builder.py
-   ```
-3. Create S3 bucket `staging-massage-dataset`, then upload `interaction.csv`, `user.csv` and `item.csv` datasets
+2. Change `.env.example` to `.env.staging` or `.env.prod` and fill in environment variables
 
-4. Run personalization
+3. Create S3 bucket `staging-massage-dataset` in staging env or `prod-massage-dataset` in production env
+
+4. Run full pipeline for training and deploying model
     ```bash
-     python3 recommender/personalize.py
+    python recommender/pipeline_train.py
     ```
-5. Get recommendations from AWS Personalize
+5. Pipeline for get recommendations
+    ```bash
+    python recommender/pipeline_inference.py
+    ```
+6. Get recommendations from AWS Personalize
     ```bash
     # Get recommendations in recommender/personalize.py
     user_id = 'da5cc281-7dae-4ef6-9d46-580102ec0784'

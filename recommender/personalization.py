@@ -1,19 +1,20 @@
-import os
 import time
 import json
 from botocore.exceptions import ClientError
 from config.config import settings
 from config.log_config import logger
-from helpers.connection import (connect_to_personalize, connect_to_iam_resource, connect_to_personalize_runtime,
-                                connect_to_s3_client)
+from helpers.connection import (connect_to_personalize, connect_to_iam_resource, connect_to_s3_client)
 
 
 class Personalization:
+    """
+    Set up the AWS Personalize service
+    Train and deploy the recommendation model
+    """
     def __init__(self, profile_name=None):
         self.s3_client = connect_to_s3_client(profile_name=profile_name)
         self.personalize_client = connect_to_personalize(profile_name=profile_name)
         self.iam_resource = connect_to_iam_resource(profile_name=profile_name)
-        self.personalize_runtime_client = connect_to_personalize_runtime(profile_name=profile_name)
 
         self.allow_personalize_access_to_s3(settings.S3_DATASET_BUCKET)
         role = self.create_iam_role(settings.PERSONALIZE_ROLE_NAME)
@@ -609,91 +610,3 @@ class Personalization:
 
             time.sleep(60)
         return response['campaignArn']
-
-    def get_recommendations(self, campaign_arn, user_id, context, num_results=5, return_item_metadata=True):
-        """
-        Get recommendations
-
-        :param campaign_arn: str, the campaign ARN
-        :param user_id: str, the user ID
-        :param context: dict, the context
-        :param num_results: int, the number of results
-        :param return_item_metadata: bool, whether to return item metadata. Default: True
-        :return: list, the recommendations
-        """
-        params = {
-            "campaignArn": campaign_arn,
-            "userId": user_id,
-            "numResults": num_results,
-            "context": context
-        }
-        if return_item_metadata:
-            params['metadataColumns'] = {
-                "ITEMS": ["ITEM_NAME"]
-            }
-
-        response = self.personalize_runtime_client.get_recommendations(**params)
-        return response['itemList']
-
-
-if __name__ == '__main__':
-    deploy_env = os.getenv('DEPLOY_ENV', 'staging').lower()
-    personalize = Personalization(profile_name='nmtruong')
-    dataset_group_arn = personalize.create_dataset_group(name=f'{deploy_env}-massage-dataset-group')
-    interaction_dataset_arn = personalize.create_interaction_dataset(
-        schema_name=f'{deploy_env}-massage-interactions-schema',
-        dataset_group_arn=dataset_group_arn,
-        name=f'{deploy_env}-massage-interactions'
-    )
-    user_dataset_arn = personalize.create_user_dataset(
-        schema_name=f'{deploy_env}-massage-users-schema',
-        dataset_group_arn=dataset_group_arn,
-        name=f'{deploy_env}-massage-users'
-    )
-    item_dataset_arn = personalize.create_item_dataset(
-        schema_name=f'{deploy_env}-massage-items-schema',
-        dataset_group_arn=dataset_group_arn,
-        name=f'{deploy_env}-massage-items'
-    )
-
-    # Import the data
-    s3_data_path = f"s3://{settings.S3_DATASET_BUCKET}/interaction.csv"
-    personalize.import_interactions_data(interaction_dataset_arn, s3_data_path)
-
-    s3_data_path = f"s3://{settings.S3_DATASET_BUCKET}/user.csv"
-    personalize.import_users_data(user_dataset_arn, s3_data_path)
-
-    s3_data_path = f"s3://{settings.S3_DATASET_BUCKET}/item.csv"
-    personalize.import_items_data(item_dataset_arn, s3_data_path)
-
-    # Create a solution
-    solution_version_arn = personalize.create_solution(
-        name=f'{deploy_env}-massage-solution',
-        dataset_group_arn=dataset_group_arn
-    )
-
-    # Get solution metrics
-    solution_metrics = personalize.get_solution_metrics(solution_version_arn)
-    logger.info(solution_metrics)
-
-    # Create a campaign
-    # solution_version_arn = 'arn:aws:personalize:us-west-2:639486279781:solution/staging-massage-solution/1c3637d3'
-    campaign_arn = personalize.create_campaign(
-        name=f'{deploy_env}-massage-campaign',
-        solution_version_arn=solution_version_arn
-    )
-
-    # Get recommendations
-    # campaign_arn = 'arn:aws:personalize:us-west-2:639486279781:campaign/staging-massage-campaign'
-    user_id = 'da5cc281-7dae-4ef6-9d46-580102ec0784'
-    context = {
-        'SERVICE_LENGTH': "60.0",
-        'MASSAGE_NAME': 'The NOW 50',
-        'CENTER_NAME': 'Roswell',
-        'AGE': "30",
-        'GENDER': 'Female',
-        'ZIPCODE': "null",
-        'BASE_CENTER': 'Roswell'
-    }
-    recommendations = personalize.get_recommendations(campaign_arn, user_id, context)
-    logger.info(recommendations)

@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 from config.config import settings
 from config.log_config import logger
@@ -6,17 +5,9 @@ from config.log_config import logger
 
 class DatasetBuilder:
     """
-    Input:
-        USER_ID
-        AGE
-        GENDER
-        USER_ZIPCODE
-        BASE_CENTER
-        CENTER_NAME
-        SERVICE_LENGTH
-        MASSAGE_NAME
-    Output:
-        ENHANCEMENT_CODE
+    Build the dataset for the recommendation system, including interaction, user and item datasets
+    The dataset will be uploaded to S3 bucket for Personalize to use.
+    The format of the dataset is csv
     """
 
     def __init__(self, data=None, data_path=None):
@@ -84,15 +75,3 @@ class DatasetBuilder:
         item_df = item_df.drop_duplicates(subset=['item_id'])
         item_df.columns = [col.upper() for col in item_df.columns]
         return item_df
-
-
-if __name__ == '__main__':
-    path = os.path.join(settings.BASE_DIR, 'data', 'full_processed_data.parquet')
-    data_builder = DatasetBuilder(data_path=path)
-    interaction_df = data_builder.build_interaction_dataset()
-    user_df = data_builder.build_user_dataset()
-    item_df = data_builder.build_item_dataset()
-
-    interaction_df.to_csv(os.path.join(settings.BASE_DIR, 'data/interaction.csv'), index=False)
-    user_df.to_csv(os.path.join(settings.BASE_DIR, 'data/user.csv'), index=False)
-    item_df.to_csv(os.path.join(settings.BASE_DIR, 'data/item.csv'), index=False)
