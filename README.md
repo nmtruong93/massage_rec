@@ -5,16 +5,19 @@
    source venv/bin/activate
    pip install -r requirements.txt
    ```
+   
 2. Change `.env.example` to `.env.staging` or `.env.prod` and fill in environment variables
 
-3. Run full pipeline for training and deploying model
+3. Run full pipeline for training and deploying model. Make sure to have AWS credentials in `~/.aws/credentials`.
     ```bash
     python recommender/pipeline_train.py
     ```
+   
 4. Pipeline for get recommendations
     ```bash
     python recommender/pipeline_inference.py
     ```
+   
 5. Get recommendations from AWS Personalize
     ```bash
     # Get recommendations in recommender/personalize.py
